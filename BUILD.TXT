@@ -1,0 +1,5 @@
+To build this program use gcc:
+
+gcc -o gblend gblend.c
+
+Tested on 64-bit Linux but should work on nearly any gcc including Cygwin
