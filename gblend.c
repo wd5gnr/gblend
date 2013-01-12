@@ -32,7 +32,7 @@
 void usage()
 {
   fprintf(stderr,
-	  "gblend by Al Williams\n"
+	  "gblend by Al Williams V Beta 0.1 - 11 Jan 2013\n"
 "Copyright 2013 by Al Williams (al.williams@awce.com)\n"
     "Distributed under the terms of the GNU General Public License \n"
     "Blend multiple gcode files by layer\n"
