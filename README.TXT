@@ -48,9 +48,9 @@ Also add one at the start of the end code:
 
 Now slice the model multiple times using the settings you want. Be sure to save each slicing operation to a separate file. I might create two files for the statue: statue_solid.gcode and statue_hollow.gcode. Gblend can merge these files to create one gcode file that has the desired print.
 
-gblend = start.gcode [ statue_solid.gcode 26.4 status_hollow.gcode ] = end.gcode >status-print.gcode
+gblend = start.gcode [ statue_solid.gcode 26.4 statue_hollow.gcode ] = end.gcode >statue-print.gcode
 
-Interpreting this command line in English it says: copy (=) start.gcode to the output. Then take statue_solid.gcode and copy from the start of the actual print ([) up to (but not including) 26.4mm. Then starting at 26.4mm, copy to the end of the print (]) to status_hollow.gcode and finally copy (=) end.gcode totally.
+Interpreting this command line in English it says: copy (=) start.gcode to the output. Then take statue_solid.gcode and copy from the start of the actual print ([) up to (but not including) 26.4mm. Then starting at 26.4mm, copy to the end of the print (]) to statue_hollow.gcode and finally copy (=) end.gcode totally.
 
 You can use the following flags for the start:
 [ - Start of printable object (after %%%GBLEND_START)
