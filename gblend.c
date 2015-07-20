@@ -28,12 +28,15 @@
 #include <ctype.h>
 #include <unistd.h>
 
+#ifndef DEBUG
+#define DEBUG 0
+#endif
 
 void usage()
 {
   fprintf(stderr,
-	  "gblend by Al Williams V Beta 0.1 - 11 Jan 2013\n"
-"Copyright 2013 by Al Williams (al.williams@awce.com)\n"
+	  "gblend by Al Williams V Beta 0.2 - 15 July 2015\n"
+"Copyright 2013-2015 by Al Williams (al.williams@awce.com)\n"
     "Distributed under the terms of the GNU General Public License \n"
     "Blend multiple gcode files by layer\n"
 "\n"
@@ -86,6 +89,13 @@ char *endtoken="%%%GBLEND_END";
 // toend - 1 if we get to end ]
 // noterm - Keep looking even after Z overflows (-t option)
 // nostarttoken, noendtoken - 1 for -S and -E options
+
+// states are:
+// 0 = Look for Z
+// 1 = Copy
+// 2 = Done
+// 3 = Not used
+// 4 = Look for start token
 int process(FILE *out,char *fn,float start, float end, int equal, int all, int fromstart, int toend, int noterm, int nostarttoken, int noendtoken)
 {
   FILE *in=fopen(fn,"r");
@@ -97,10 +107,17 @@ int process(FILE *out,char *fn,float start, float end, int equal, int all, int f
   // scan each line
   while (fgets(linebuf,sizeof(linebuf),in))
     {
+#if DEBUG==1
+      printf("Looking at %s\n",linebuf);
+#endif      
       // scan each token
       char *token=strtok(linebuf," \t\n");;
+      if (!token) continue;
+#if DEBUG==1
+      printf("Looking at token %s in state %d\n",token,state);
+#endif      
       if (state==2) break;   // state 2 means we are done
-      do 
+      do  // for each token
 	{
 	  if (state==2) break;  // done
 	  if (noendtoken==0&&!strcmp(token+(token[0]==';'),endtoken)) 
@@ -108,20 +125,31 @@ int process(FILE *out,char *fn,float start, float end, int equal, int all, int f
 	      // if we find an end token flush anything we are holding and go to state 2
 	      if (g1flag) fprintf(out,"%s\n",holdbuf);
 	      state=2;
+#if DEBUG==1
+	      printf("Found end token\n");
+#endif	      
 	      break;
 	    }
 	  
+#if DEBUG==1
+	  if (state==4) printf("Looking for start token\n");
+#endif	  
 	  // if we are looking for start token and we don't have it, keep going
 	  if (state==4 && strcmp(token+(token[0]==';'),starttoken)) continue;
 	  // if we got here in state 4, we found a start token
 	  if (state==4) 
 	    {
+#if DEBUG==1
+	      printf("Found start token. Going to state %d\n",fromstart?1:0);
+#endif	      
 	      // go to the correct state (1=copy, 0=find start Z)
 	      state=fromstart?1:0;
 	      continue;
 	    }
 	  // look for G1 commands
-	  if (!strcmp(token,"G1")) 
+	  // Note: All FW I know of treats G1 and G0 the same
+	  // So we convert all input G0 to G1
+	  if ((!strcmp(token,"G1"))||(!strcmp(token,"G0"))) 
 	    {
 	      // flush any previous G1
 	      if (g1flag && state==1) fprintf(out,"%s",holdbuf);
@@ -130,7 +158,13 @@ int process(FILE *out,char *fn,float start, float end, int equal, int all, int f
 	    }
 	  else if (g1flag && *token=='Z')   // here we are in a G1 and we found a Z
 	    {
+	      
 	      float z=atof(token+1);
+#if DEBUG==1
+	      printf("DBG FOUND Z ****** %f\n",z);
+	      printf("start=%f end=%f all=%d toend=%d equal=%d\n",start, end, all,toend,equal);
+	      
+#endif
 	      g1flag=0;
 	      // see if we need to change state
 	      switch (state)
@@ -138,8 +172,11 @@ int process(FILE *out,char *fn,float start, float end, int equal, int all, int f
 		case 0:  // not printing, do we start?
 		  if (z>=start)
 		    {
-		      if (z>=end && !equal) continue;
-		      if (z>end && equal) continue;
+		      if (!toend)
+			{
+			  if (z>=end && !equal) continue;
+			  if (z>end && equal) continue;
+			}
 		      state=1;
 		      fprintf(out,"%s%s ",holdbuf,token);  // print pending 
 		    }
@@ -150,6 +187,8 @@ int process(FILE *out,char *fn,float start, float end, int equal, int all, int f
 		      // stop on these
 		      if (z>=end && !equal) state=2;
 		      if (z>end && equal) state=2;
+		      if (state==2 && g1flag) fprintf(out,"%s\n",holdbuf);
+		      if (state==2) break;
 		    }
 		  if (state==1) fprintf(out,"%s%s ",holdbuf,token);
 		  // if we are going to stop but noterm is in effect, go back to state 0
@@ -295,6 +334,10 @@ int main(int argc, char *argv[])
 	}
       // now we better have a file name
       fn=argv[i];
+#if DEBUG==1
+      printf("File: %s\n",fn);
+#endif      
+      fprintf(out,"; %%%%%%GBLEND_FILE=%s\n",fn);
       if (i+1!=argc)
 	{
 	  // peek ahead to see if we have a stop or start for next

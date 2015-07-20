@@ -1,0 +1,4 @@
+#!/bin/bash
+gcc -o bin/gblend-amd64 gblend.c
+gcc -o bin/gblend-i386 -m32 gblend.c
+i686-w64-mingw32-gcc gblend.c -o bin/gblend.exe
